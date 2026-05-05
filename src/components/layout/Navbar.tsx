@@ -181,9 +181,7 @@ const Navbar = () => {
       {/* Mobile Menu Drawer */}
       <div
         className={`fixed inset-0 z-[2000] bg-black/50 transition-opacity duration-300 lg:hidden ${
-          isMenuOpen
-            ? "opacity-100 visible"
-            : "opacity-0 invisible"
+          isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
         onClick={closeMenu}
       >
@@ -196,10 +194,7 @@ const Navbar = () => {
           <div className="p-6 flex flex-col h-full">
             <div className="flex justify-between items-center mb-8">
               <img src="/logo.png" alt="logo" className="h-12" />
-              <button
-                className="text-secondary p-1"
-                onClick={closeMenu}
-              >
+              <button className="text-secondary p-1" onClick={closeMenu}>
                 <X size={24} />
               </button>
             </div>
