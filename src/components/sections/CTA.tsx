@@ -1,11 +1,11 @@
-import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import React from "react";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 const CTA = () => {
   return (
     <section className="bg-secondary relative overflow-hidden">
       <div className="container relative z-10 flex flex-col lg:flex-row items-center py-16 lg:py-0">
-
         {/* Left Side: Text */}
         <div className="w-full lg:w-3/5 text-white lg:py-20">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
@@ -16,10 +16,16 @@ const CTA = () => {
             Get the best quality customized labels tailored to your needs.
             Professional solutions for every industry.
           </p>
-          <button className="bg-white hover:bg-slate-100 text-secondary px-10 py-4 rounded-lg font-bold flex items-center gap-3 transition-all group shadow-xl">
+          <Link
+            href="/contact"
+            className="bg-white w-fit hover:bg-slate-100 text-secondary px-10 py-4 rounded-lg font-bold flex items-center gap-3 transition-all group shadow-xl"
+          >
             Request a Quote
-            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-          </button>
+            <ArrowRight
+              size={20}
+              className="group-hover:translate-x-1 transition-transform"
+            />
+          </Link>
         </div>
 
         {/* Right Side: Image */}
@@ -32,7 +38,6 @@ const CTA = () => {
             />
           </div>
         </div>
-
       </div>
 
       {/* Decorative background overlay */}

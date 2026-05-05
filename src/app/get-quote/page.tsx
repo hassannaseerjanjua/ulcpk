@@ -1,16 +1,17 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PageHeader from "@/components/layout/PageHeader";
-import { 
-  Calculator, 
-  Layers, 
-  Maximize, 
-  Palette, 
-  Hash, 
-  ArrowRight, 
+import {
+  Calculator,
+  Layers,
+  Maximize,
+  Palette,
+  Hash,
+  ArrowRight,
   CheckCircle2,
-  Info
+  Info,
 } from "lucide-react";
+import Link from "next/link";
 
 const GetQuote = () => {
   const [formData, setFormData] = useState({
@@ -19,13 +20,62 @@ const GetQuote = () => {
     quantity: 2000,
     colors: 1,
     material: "Semi-Gloss Paper",
-    finish: "None"
+    finish: "None",
   });
 
   const [estimate, setEstimate] = useState<number | null>(null);
+  const [generatedEstimate, setGeneratedEstimate] = useState<number | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [showQuote, setShowQuote] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  const FIELD_LIMITS = {
+    length: { min: 10, max: 500 },
+    width: { min: 10, max: 250 },
+    quantity: { min: 100, max: 100000 },
+  } as const;
+
+  const validateQuoteInputs = () => {
+    const errors: string[] = [];
+
+    if (
+      formData.length < FIELD_LIMITS.length.min ||
+      formData.length > FIELD_LIMITS.length.max
+    ) {
+      errors.push(
+        `Label length must be between ${FIELD_LIMITS.length.min} and ${FIELD_LIMITS.length.max} mm.`,
+      );
+    }
+
+    if (
+      formData.width < FIELD_LIMITS.width.min ||
+      formData.width > FIELD_LIMITS.width.max
+    ) {
+      errors.push(
+        `Label width must be between ${FIELD_LIMITS.width.min} and ${FIELD_LIMITS.width.max} mm.`,
+      );
+    }
+
+    if (
+      formData.quantity < FIELD_LIMITS.quantity.min ||
+      formData.quantity > FIELD_LIMITS.quantity.max
+    ) {
+      errors.push(
+        `Quantity must be between ${FIELD_LIMITS.quantity.min} and ${FIELD_LIMITS.quantity.max}.`,
+      );
+    }
+
+    return errors;
+  };
 
   // Calculation logic based on the sheet's logic
   useEffect(() => {
+    setShowQuote(false);
+    setGeneratedEstimate(null);
+
     // These rates are derived from the spreadsheet provided
     const RATES = {
       PAPER_SQM: 180, // PKR per sq meter
@@ -38,47 +88,89 @@ const GetQuote = () => {
 
     // 1. Calculate dimensions and "Ups" (simplified)
     const ups = Math.floor(250 / formData.width) || 1; // Assuming 250mm max width for press
-    
+
     // 2. Calculate meters needed
     const lengthInMeters = formData.length / 1000;
     const totalMeters = (formData.quantity / ups) * lengthInMeters;
     const metersWithWastage = totalMeters * (1 + RATES.WASTAGE_PERCENT / 100);
-    
+
     // 3. Calculate Sq Meters
     const paperWidthInMeters = (formData.width * ups + 20) / 1000; // Adding 20mm for trim
     const sqMeters = metersWithWastage * paperWidthInMeters;
-    
+
     // 4. Calculate Costs
     const paperCost = sqMeters * RATES.PAPER_SQM;
-    
+
     // Ink calculation: (Square Meters * Colors * Ink Price) / Yield (4000 sqm per kg is a standard flexo estimate)
     const inkCost = (sqMeters * formData.colors * RATES.INK_KG) / 4000;
-    
+
     // Overhead calculation: In the sheet, overhead seems to scale with colors or setup
     // Using a logic of Base Overhead + (Colors * Setup Rate)
-    const overheadCost = RATES.OVERHEAD + (formData.colors * 500); 
-    
+    const overheadCost = RATES.OVERHEAD + formData.colors * 500;
+
     // Packaging costs (Carton + Core)
-    const packagingCost = (formData.quantity / 2000) * (RATES.CARTON + RATES.CORE * 6);
+    const packagingCost =
+      (formData.quantity / 2000) * (RATES.CARTON + RATES.CORE * 6);
 
     const totalCost = paperCost + inkCost + overheadCost + packagingCost;
     const costPerLabel = totalCost / formData.quantity;
-    
+
     // 5. Add Margin (Using the 'CM' logic from the sheet - approx 50-60% markup)
-    const priceWithMargin = costPerLabel * 1.65; 
+    const priceWithMargin = costPerLabel * 1.65;
 
     setEstimate(priceWithMargin);
   }, [formData]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'material' || name === 'finish' ? value : Number(value) }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "material" || name === "finish" ? value : Number(value),
+    }));
+
+    setShowQuote(false);
+    setGeneratedEstimate(null);
+    setErrorMessage(null);
+  };
+
+  const handleGenerate = () => {
+    if (isLoading) return;
+
+    const errors = validateQuoteInputs();
+    if (errors.length > 0) {
+      setErrorMessage(errors.join(" "));
+      setShowQuote(false);
+      setGeneratedEstimate(null);
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsLoading(true);
+    setShowQuote(false);
+
+    window.setTimeout(() => {
+      setGeneratedEstimate(estimate);
+      setIsLoading(false);
+      setShowQuote(true);
+
+      if (resultRef.current && typeof window !== "undefined") {
+        if (window.matchMedia("(max-width: 768px)").matches) {
+          resultRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }
+    }, 1200);
   };
 
   return (
     <main className="bg-primary/5">
-      <PageHeader 
-        title="Instant Quote Estimate" 
+      <PageHeader
+        title="Instant Quote Estimate"
         subtitle="Get an immediate cost estimation for your custom label project. Please note that final pricing may vary based on specific technical requirements."
         backgroundImage="/hero-bg.png"
       />
@@ -86,7 +178,6 @@ const GetQuote = () => {
       <section className="py-24">
         <div className="container">
           <div className="flex flex-col lg:flex-row gap-12">
-            
             {/* Form Side */}
             <div className="w-full lg:w-2/3">
               <div className="bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-slate-100">
@@ -95,8 +186,12 @@ const GetQuote = () => {
                     <Calculator size={24} />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-secondary">Label Specifications</h2>
-                    <p className="text-gray-500 text-sm">Enter your requirements to calculate the estimate</p>
+                    <h2 className="text-2xl font-bold text-secondary">
+                      Label Specifications
+                    </h2>
+                    <p className="text-gray-500 text-sm">
+                      Enter your requirements to calculate the estimate
+                    </p>
                   </div>
                 </div>
 
@@ -109,26 +204,30 @@ const GetQuote = () => {
                     </label>
                     <div className="flex gap-4">
                       <div className="flex-1">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           name="length"
                           value={formData.length}
                           onChange={handleChange}
                           placeholder="Length"
                           className="w-full px-5 py-4 rounded-xl bg-primary/20 border border-transparent focus:bg-white focus:border-secondary outline-none transition-all"
                         />
-                        <span className="text-[10px] text-gray-400 mt-1 block px-1">Length (mm)</span>
+                        <span className="text-[10px] text-gray-400 mt-1 block px-1">
+                          Length (mm)
+                        </span>
                       </div>
                       <div className="flex-1">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           name="width"
                           value={formData.width}
                           onChange={handleChange}
                           placeholder="Width"
                           className="w-full px-5 py-4 rounded-xl bg-primary/20 border border-transparent focus:bg-white focus:border-secondary outline-none transition-all"
                         />
-                        <span className="text-[10px] text-gray-400 mt-1 block px-1">Width (mm)</span>
+                        <span className="text-[10px] text-gray-400 mt-1 block px-1">
+                          Width (mm)
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -139,8 +238,8 @@ const GetQuote = () => {
                       <Hash size={16} className="text-secondary-light" />
                       Total Quantity Required
                     </label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       name="quantity"
                       value={formData.quantity}
                       onChange={handleChange}
@@ -154,13 +253,17 @@ const GetQuote = () => {
                       <Palette size={16} className="text-secondary-light" />
                       Number of Colors
                     </label>
-                    <select 
+                    <select
                       name="colors"
                       value={formData.colors}
                       onChange={handleChange}
                       className="w-full px-5 py-4 rounded-xl bg-primary/20 border border-transparent focus:bg-white focus:border-secondary outline-none transition-all appearance-none"
                     >
-                      {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} Color{n>1?'s':''}</option>)}
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                        <option key={n} value={n}>
+                          {n} Color{n > 1 ? "s" : ""}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -170,7 +273,7 @@ const GetQuote = () => {
                       <Layers size={16} className="text-secondary-light" />
                       Material Type
                     </label>
-                    <select 
+                    <select
                       name="material"
                       value={formData.material}
                       onChange={handleChange}
@@ -188,15 +291,42 @@ const GetQuote = () => {
                 <div className="mt-12 p-6 bg-secondary/5 rounded-2xl border border-secondary/10 flex gap-4">
                   <Info className="text-secondary shrink-0" size={20} />
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    The calculated price includes standard setup costs, plate charges for the selected number of colors, and high-quality adhesive material. For complex shapes or special finishes (embossing, spot UV), please submit the form for a manual review.
+                    The calculated price includes standard setup costs, plate
+                    charges for the selected number of colors, and high-quality
+                    adhesive material. For complex shapes or special finishes
+                    (embossing, spot UV), please submit the form for a manual
+                    review.
                   </p>
                 </div>
+
+                <div className="mt-8 flex flex-col sm:flex-row items-stretch gap-4">
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto bg-secondary text-white py-4 px-6 rounded-xl font-bold transition-all hover:bg-secondary-light disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? "Generating Quote..." : "Generate Quote"}
+                  </button>
+                  <div className="flex-1 text-sm text-gray-500 leading-relaxed pt-3 sm:pt-0">
+                    Use the button to generate a live estimate. The result will
+                    appear after a brief calculation delay.
+                  </div>
+                </div>
+                {errorMessage ? (
+                  <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {errorMessage}
+                  </div>
+                ) : null}
               </div>
             </div>
 
             {/* Summary Side */}
             <div className="w-full lg:w-1/3">
-              <div className="bg-secondary text-white p-8 md:p-10 rounded-3xl shadow-2xl sticky top-8">
+              <div
+                ref={resultRef}
+                className="bg-secondary text-white p-8 md:p-10 rounded-3xl shadow-2xl sticky top-8"
+              >
                 <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                   <span className="w-2 h-8 bg-secondary-light rounded-full"></span>
                   Quote Summary
@@ -205,39 +335,66 @@ const GetQuote = () => {
                 <div className="space-y-6 mb-10">
                   <div className="flex justify-between border-b border-white/10 pb-4">
                     <span className="text-slate-400">Labels Size</span>
-                    <span className="font-bold">{formData.length} x {formData.width} mm</span>
+                    <span className="font-bold">
+                      {formData.length} x {formData.width} mm
+                    </span>
                   </div>
                   <div className="flex justify-between border-b border-white/10 pb-4">
                     <span className="text-slate-400">Quantity</span>
-                    <span className="font-bold">{formData.quantity.toLocaleString()} pcs</span>
+                    <span className="font-bold">
+                      {formData.quantity.toLocaleString()} pcs
+                    </span>
                   </div>
                   <div className="flex justify-between border-b border-white/10 pb-4">
                     <span className="text-slate-400">Printing</span>
-                    <span className="font-bold">{formData.colors} Color{formData.colors > 1 ? 's' : ''}</span>
+                    <span className="font-bold">
+                      {formData.colors} Color{formData.colors > 1 ? "s" : ""}
+                    </span>
                   </div>
                 </div>
 
                 <div className="bg-white/5 p-6 rounded-2xl mb-10 text-center">
-                  <span className="text-slate-400 text-sm block mb-2 uppercase tracking-widest font-bold">Estimated Total</span>
+                  <span className="text-slate-400 text-sm block mb-2 uppercase tracking-widest font-bold">
+                    Estimated Total
+                  </span>
                   <div className="text-4xl font-black text-white mb-1">
-                    PKR {estimate ? (estimate * formData.quantity).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "---"}
+                    {showQuote && generatedEstimate ? (
+                      <>
+                        PKR{" "}
+                        {(generatedEstimate * formData.quantity).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 0 },
+                        )}
+                      </>
+                    ) : (
+                      "PKR ---"
+                    )}
                   </div>
-                  <span className="text-secondary-light font-bold text-sm">
-                    {estimate ? `PKR ${estimate.toFixed(2)} per label` : "Calculating..."}
+                  <span className="text-white/70 font-bold text-sm">
+                    {isLoading
+                      ? "Generating quote..."
+                      : showQuote && generatedEstimate
+                        ? `PKR ${generatedEstimate.toFixed(2)} per label`
+                        : "Complete the form and click Generate Quote."}
                   </span>
                 </div>
 
-                <button className="w-full bg-white text-secondary hover:bg-secondary-light hover:text-white py-5 rounded-xl font-bold flex items-center justify-center gap-3 transition-all group">
+                <Link
+                  href="/contact"
+                  className="w-full bg-white text-secondary hover:bg-secondary-light hover:text-white py-5 rounded-xl font-bold flex items-center justify-center gap-3 transition-all group"
+                >
                   Proceed to Order
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+                  <ArrowRight
+                    size={20}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </Link>
 
                 <p className="text-center text-[11px] text-slate-500 mt-6">
                   * All prices are subject to GST where applicable.
                 </p>
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -247,14 +404,31 @@ const GetQuote = () => {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { title: "Instant Estimates", desc: "No more waiting for sales reps. Get immediate pricing based on market rates." },
-              { title: "Transparency", desc: "Understand the cost breakdown for materials, ink, and overheads." },
-              { title: "Technical Accuracy", desc: "Our calculator accounts for wastage and production efficiency automatically." }
+              {
+                title: "Instant Estimates",
+                desc: "No more waiting for sales reps. Get immediate pricing based on market rates.",
+              },
+              {
+                title: "Transparency",
+                desc: "Understand the cost breakdown for materials, ink, and overheads.",
+              },
+              {
+                title: "Technical Accuracy",
+                desc: "Our calculator accounts for wastage and production efficiency automatically.",
+              },
             ].map((item, idx) => (
-              <div key={idx} className="flex gap-4 p-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                <CheckCircle2 className="text-secondary-light shrink-0" size={24} />
+              <div
+                key={idx}
+                className="flex gap-4 p-6 bg-white rounded-2xl border border-slate-100 shadow-sm"
+              >
+                <CheckCircle2
+                  className="text-secondary-light shrink-0"
+                  size={24}
+                />
                 <div>
-                  <h4 className="font-bold text-secondary mb-1">{item.title}</h4>
+                  <h4 className="font-bold text-secondary mb-1">
+                    {item.title}
+                  </h4>
                   <p className="text-sm text-gray-500">{item.desc}</p>
                 </div>
               </div>
