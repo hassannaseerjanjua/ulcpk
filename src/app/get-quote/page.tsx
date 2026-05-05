@@ -13,6 +13,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+const FIELD_LIMITS = {
+  length: { min: 10, max: 500 },
+  width: { min: 10, max: 250 },
+  quantity: { min: 100, max: 100000 },
+} as const;
+
+const RATES = {
+  PAPER_SQM: 180,
+  INK_KG: 6500,
+  OVERHEAD: 7500,
+  CARTON: 100,
+  CORE: 9.1,
+  WASTAGE_PERCENT: 165,
+} as const;
+
 const GetQuote = () => {
   const [formData, setFormData] = useState({
     length: 128,
@@ -31,12 +46,6 @@ const GetQuote = () => {
   const [showQuote, setShowQuote] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement | null>(null);
-
-  const FIELD_LIMITS = {
-    length: { min: 10, max: 500 },
-    width: { min: 10, max: 250 },
-    quantity: { min: 100, max: 100000 },
-  } as const;
 
   const validateQuoteInputs = () => {
     const errors: string[] = [];
@@ -75,16 +84,6 @@ const GetQuote = () => {
   useEffect(() => {
     setShowQuote(false);
     setGeneratedEstimate(null);
-
-    // These rates are derived from the spreadsheet provided
-    const RATES = {
-      PAPER_SQM: 180, // PKR per sq meter
-      INK_KG: 6500,
-      OVERHEAD: 7500,
-      CARTON: 100,
-      CORE: 9.1,
-      WASTAGE_PERCENT: 165, // As seen in sheet
-    };
 
     // 1. Calculate dimensions and "Ups" (simplified)
     const ups = Math.floor(250 / formData.width) || 1; // Assuming 250mm max width for press

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Mail, Phone, Clock, Globe, ChevronDown, Menu, X } from "lucide-react";
@@ -8,27 +8,38 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  const navLinks = [
-    { name: "Home", href: "/" },
-    { name: "About Us", href: "/about" },
-    {
-      name: "Products",
-      href: "/products",
-      hasDropdown: true,
-      dropdownItems: [
-        { name: "Food & Beverage", href: "/products/food-beverage" },
-        { name: "Pharmaceutical", href: "/products/pharmaceutical" },
-        { name: "Cosmetics", href: "/products/cosmetics" },
-        { name: "Industrial & Barcode", href: "/products/industrial" },
-        { name: "Custom Solutions", href: "/products/custom" },
-      ],
-    },
-    { name: "Services", href: "/services" },
-    { name: "Our Work", href: "/our-work" },
-    { name: "Contact Us", href: "/contact" },
-  ];
+  const navLinks = useMemo(
+    () => [
+      { name: "Home", href: "/" },
+      { name: "About Us", href: "/about" },
+      {
+        name: "Products",
+        href: "/products",
+        hasDropdown: true,
+        dropdownItems: [
+          { name: "Food & Beverage", href: "/products/food-beverage" },
+          { name: "Pharmaceutical", href: "/products/pharmaceutical" },
+          { name: "Cosmetics", href: "/products/cosmetics" },
+          { name: "Industrial & Barcode", href: "/products/industrial" },
+          { name: "Custom Solutions", href: "/products/custom" },
+        ],
+      },
+      { name: "Services", href: "/services" },
+      { name: "Our Work", href: "/our-work" },
+      { name: "Contact Us", href: "/contact" },
+    ],
+    [],
+  );
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = useCallback((href: string) => pathname === href, [pathname]);
+
+  const toggleMenu = useCallback(() => {
+    setIsMenuOpen((prev) => !prev);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
 
   return (
     <header className="w-full  top-0 z-[1000] shadow-[0_2px_10px_rgba(0,0,0,0.05)]">
@@ -159,7 +170,7 @@ const Navbar = () => {
           {/* Mobile Menu Toggle */}
           <button
             className="lg:hidden text-secondary p-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onClick={toggleMenu}
             aria-label="Toggle Menu"
           >
             {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
@@ -171,10 +182,10 @@ const Navbar = () => {
       <div
         className={`fixed inset-0 z-[2000] bg-black/50 transition-opacity duration-300 lg:hidden ${
           isMenuOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+            ? "opacity-100 visible"
+            : "opacity-0 invisible"
         }`}
-        onClick={() => setIsMenuOpen(false)}
+        onClick={closeMenu}
       >
         <div
           className={`absolute right-0 top-0 h-full w-[80%] max-w-[300px] bg-white shadow-2xl transition-transform duration-300 transform ${
@@ -187,7 +198,7 @@ const Navbar = () => {
               <img src="/logo.png" alt="logo" className="h-12" />
               <button
                 className="text-secondary p-1"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={closeMenu}
               >
                 <X size={24} />
               </button>
@@ -204,7 +215,7 @@ const Navbar = () => {
                           ? "text-secondary-light"
                           : "text-secondary"
                       }`}
-                      onClick={() => setIsMenuOpen(false)}
+                      onClick={closeMenu}
                     >
                       {link.name}
                     </Link>
@@ -222,7 +233,7 @@ const Navbar = () => {
                           <Link
                             href={item.href}
                             className="text-sm font-medium text-gray-500 hover:text-secondary-light transition-colors"
-                            onClick={() => setIsMenuOpen(false)}
+                            onClick={closeMenu}
                           >
                             {item.name}
                           </Link>
@@ -238,7 +249,7 @@ const Navbar = () => {
               <Link
                 href="/get-quote"
                 className="cta-button w-full text-center block"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={closeMenu}
               >
                 Get A Quote
               </Link>
@@ -266,4 +277,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default React.memo(Navbar);

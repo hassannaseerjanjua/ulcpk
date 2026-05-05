@@ -21,18 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            minHeight: "100vh",
-          }}
-        >
-          <Navbar />
-          <main style={{ flex: 1 }}>{children}</main>
-          <Footer />
-        </div>
+      <body className={`${inter.className} flex flex-col min-h-screen`}>
+        <Navbar />
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );
